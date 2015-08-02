@@ -116,6 +116,6 @@ Write-Host "Start"
 Get-ChildItem -Directory -Path $mangaFolder | Foreach { getManga $_.Name }
 Get-ChildItem -Directory -Path $syncFolder\* | Foreach { if ( (Get-ChildItem -Directory -Path $_.FullName).Count -eq 0) { Remove-Item -Path $_.FullName} }
 Write-Host "All Done!"
-# remove the two lines below if this sscript runs as scheduled task!
+# remove the two lines below if this script runs as scheduled task!
 Write-Host "Press any key to close the window"
 $x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
