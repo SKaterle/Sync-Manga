@@ -1,10 +1,9 @@
-﻿$mangaFolder = "F:\Manga\mangahere\Ongoing"
-$syncFolder = "F:\Manga\mangahere\Sync"
-$source = "http://www.mangahere.co/manga/"
+﻿[String] $mangaFolder = "F:\Manga\mangahere\Ongoing"
+[String] $syncFolder = "F:\Manga\mangahere\Sync"
+[String] $source = "http://www.mangahere.co/manga/"
 
 function getChapter([String] $url, [String] $folder)
 {
-    write-host "$url to $folder"
     do
     {
         $statusCode = 0
@@ -17,11 +16,9 @@ function getChapter([String] $url, [String] $folder)
             {
                 $fname = ($image.Substring($image.LastIndexOf("/")+1)).Split("?")
                 Invoke-WebRequest -Uri $image -OutFile ($folder + $fname[0])
-                write-host "." -noNewLine
-                if ($syncFolder)
+                if ($syncFolder.Length -ne 0)
                 {
-                    $target = $folder.Replace($mangaFolder, $syncFolder)
-                    Copy-Item -Path ($folder + $fname[0]) -Destination $target 
+                    Copy-Item -Path ($folder + $fname[0]) -Destination ($folder.Replace($mangaFolder, $syncFolder))
                 } 
             }
             if ($url.EndsWith(".html") -eq $false)
@@ -32,8 +29,20 @@ function getChapter([String] $url, [String] $folder)
         catch [System.Net.WebException] 
         {
             $statusCode = [int]$_.Exception.Response.StatusCode
+            Write-Host "Error: $statusCode" -BackgroundColor Red -NoNewline
         }
     } while ($statusCode -eq 0)
+    if ((Get-ChildItem $folder).Count -eq 0)
+    {
+        Remove-Item -Path $folder -Force
+        if ($syncFolder.Length -ne 0)
+        {
+            Remove-Item -Path ($folder.Replace($mangaFolder, $syncFolder)) -Force
+        }
+    } else {
+        Write-Host ""
+        Write-Host "-Updates: $folder" -BackgroundColor DarkYellow
+    }
 }
 
 function checkChapter([String] $manga,[String] $url)
@@ -46,15 +55,18 @@ function checkChapter([String] $manga,[String] $url)
         if ((Test-Path -Path $folder -PathType Container) -eq $false)
         {
             #check sync folder
-            $sync_folder = $syncFolder + "\" + $manga
-            if ((Test-Path -Path $sync_folder -PathType Container) -eq $false)
+            if ($syncFolder.Length -ne 0)
             {
-                New-Item -ItemType Directory -Force -Path $sync_folder
-            }
-            $sync_folder = $url -replace ".$"
-            $sync_folder = $syncFolder + "\" + $manga + "\" + $sync_folder.Substring($sync_folder.LastIndexOf("/")+1)
-            New-Item -ItemType Directory -Force -Path $sync_folder
-            New-Item -ItemType Directory -Force -Path $folder
+                $sync_folder = $syncFolder + "\" + $manga
+                if ((Test-Path -Path $sync_folder -PathType Container) -eq $false)
+                {
+                    New-Item -ItemType Directory -Force -Path $sync_folder | Out-Null
+                }
+                $sync_folder = $url -replace ".$"
+                $sync_folder = $syncFolder + "\" + $manga + "\" + $sync_folder.Substring($sync_folder.LastIndexOf("/")+1)
+                New-Item -ItemType Directory -Force -Path $sync_folder | Out-Null
+            }            
+            New-Item -ItemType Directory -Force -Path $folder | Out-Null
             getChapter $url ($folder + "\")
         }
     }
@@ -63,10 +75,31 @@ function checkChapter([String] $manga,[String] $url)
 function getManga([String] $manga)
 {
     $url = $manga.Replace(" ", "_")
+    $url = $url.Replace("(", "")
+    $url = $url.Replace(")", "")
+    $url = $url.Replace("-", "_")
+    $url = $url.Replace(",", "_")
+    $url = $url.Replace("!", "")
+    do
+    {
+        $url = $url.Replace("__", "_") 
+    } while ($url.IndexOf("__") -ne -1)
     $url = $url.ToLower()
     $next = $source + $url + "/"
-    $response = Invoke-WebRequest -Uri ($next)
-    $response.AllElements | Where-Object {$_.innerText -match $manga} | Foreach {checkChapter $manga $_.href}
+    Write-Host "Checking $manga " -NoNewline
+    try
+    {
+        $response = Invoke-WebRequest -Uri ($next)
+        $response.Links | Where-Object {$_.innerText -clike ($manga+ "*") } | Foreach {checkChapter $manga $_.href}
+        Write-host " Good" -BackgroundColor Green -NoNewline
+    }
+    catch [System.Net.WebException] 
+    {
+        $statusCode = [int]$_.Exception.Response.StatusCode
+        Write-Host "Error: $statusCode" -BackgroundColor Red -NoNewline
+    }
+    Write-Host ""
 }
 clear
-Get-ChildItem -Directory -Path $mangaFolder | foreach { getManga $_.Name }
+Get-ChildItem -Directory -Path $mangaFolder | Foreach { getManga $_.Name }
+Get-ChildItem -Directory -Path $syncFolder\* | Foreach { if ( (Get-ChildItem -Directory -Path $_.FullName).Count -eq 0) { Remove-Item -Path $_.FullName} }
