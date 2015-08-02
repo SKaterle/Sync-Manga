@@ -1,5 +1,10 @@
-﻿[String] $mangaFolder = "F:\Manga\mangahere\Ongoing"
-[String] $syncFolder = "F:\Manga\mangahere\Sync"
+﻿# main folder where the manga will be stored - amend the path to your local repository
+[String] $mangaFolder = "F:\Manga\mangahere\Ongoing"
+
+# all updates will be stored in this folder
+[String] $syncFolder = "F:\Manga\Sync"
+
+# manga site to be checked
 [String] $source = "http://www.mangahere.co/manga/"
 
 function getChapter([String] $url, [String] $folder)
@@ -40,8 +45,14 @@ function getChapter([String] $url, [String] $folder)
             Remove-Item -Path ($folder.Replace($mangaFolder, $syncFolder)) -Force
         }
     } else {
-        Write-Host ""
-        Write-Host "-Updates: $folder" -BackgroundColor DarkYellow
+        if ((Get-ChildItem -Path $folder\*).Count -eq 1)
+        {
+            Remove-Item -Path $folder -Force -Recurse
+            if ($syncFolder.Length -ne 0)
+            {
+                Remove-Item -Path ($folder.Replace($mangaFolder, $syncFolder)) -Force -Recurse
+            }
+        } 
     }
 }
 
@@ -91,15 +102,20 @@ function getManga([String] $manga)
     {
         $response = Invoke-WebRequest -Uri ($next)
         $response.Links | Where-Object {$_.innerText -clike ($manga+ "*") } | Foreach {checkChapter $manga $_.href}
-        Write-host " Good" -BackgroundColor Green -NoNewline
+        Write-host " Good" -BackgroundColor Green
     }
     catch [System.Net.WebException] 
     {
         $statusCode = [int]$_.Exception.Response.StatusCode
         Write-Host "Error: $statusCode" -BackgroundColor Red -NoNewline
     }
-    Write-Host ""
+    
 }
 clear
+Write-Host "Start"
 Get-ChildItem -Directory -Path $mangaFolder | Foreach { getManga $_.Name }
 Get-ChildItem -Directory -Path $syncFolder\* | Foreach { if ( (Get-ChildItem -Directory -Path $_.FullName).Count -eq 0) { Remove-Item -Path $_.FullName} }
+Write-Host "All Done!"
+# remove the two lines below if this sscript runs as scheduled task!
+Write-Host "Press any key to close the window"
+$x = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
