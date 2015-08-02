@@ -2,7 +2,7 @@
 usage:
 Create a folder, as example: c:\manga
 Download the script and save in this folder
-Create a sub-folder, where the respective script-connector should store the manga
+Create a sub-folder, where the respective script-connector should store the manga.
 As example: c:\manga\mangahere
 Optional: create an update folder, as example: c:\manga\updates
 Open the script in a text editor and amend the following lines:
