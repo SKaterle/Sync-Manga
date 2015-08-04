@@ -51,12 +51,12 @@ function checkChapterMangaReader([String] $manga,[String] $url, [String] $mangaD
             $folder = $mangaFolder + "\" + $mangaDir + "\" + "c" + $folder.Substring($folder.Length -3)
             try
             {
-                $response = Invoke-WebRequest -Uri ($url + "/" + $chapter.ToString())
-                $response.ParsedHtml.body.getElementsByTagName('div') | Where {$_.getAttributeNode('id').Value -eq 'recom_info'} | Foreach { $statusCode = -1 } 
-                if ($statusCode -ne 0) { break }
                 #check main folder
                 if ((Test-Path -Path $folder -PathType Container) -eq $false)
                 {
+                    $response = Invoke-WebRequest -Uri ($url + "/" + $chapter.ToString())
+                    $response.ParsedHtml.body.getElementsByTagName('div') | Where {$_.getAttributeNode('id').Value -eq 'recom_info'} | Foreach { $statusCode = -1 } 
+                    if ($statusCode -ne 0) { break }
                     #check sync folder
                     if ($syncFolder.Length -ne 0)
                     {
